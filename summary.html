@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Summary</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Daily Delivery Summary</h1>
+        <div id="summaryContent">
+            <table id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Number of Packets</th>
+                        <th>Cost (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be loaded here by JavaScript -->
+                </tbody>
+            </table>
+            <div id="summaryTotals">
+                <h3>Total Summary</h3>
+                <p>Total Packets Delivered: <span id="totalPackets">0</span></p>
+                <p>Total Cost: ₹<span id="totalCost">0</span></p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
