@@ -10,9 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // Function to handle the customer entry page
 function initializeCustomerPage() {
     const form = document.getElementById('deliveryForm');
+    const deliveryDateInput = document.getElementById('deliveryDate');
     const isAbsentCheckbox = document.getElementById('isAbsent');
     const milkPacketsInput = document.getElementById('milkPackets');
     const deliveryCostInput = document.getElementById('deliveryCost');
+
+    // --- NEW: Set default date to today ---
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const dd = String(today.getDate()).padStart(2, '0');
+    deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
+    // --- End of new code ---
 
     // Disable packet and cost fields if "Absent" is checked
     isAbsentCheckbox.addEventListener('change', (e) => {
@@ -28,12 +37,13 @@ function initializeCustomerPage() {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const deliveryDate = document.getElementById('deliveryDate').value;
+        const deliveryDate = deliveryDateInput.value;
         const isAbsent = isAbsentCheckbox.checked;
 
         const entry = {
             date: deliveryDate,
-            packets: isAbsent ? 0 : parseInt(milkPacketsInput.value) || 0,
+            // --- MODIFIED: Use parseFloat for packets to allow decimals ---
+            packets: isAbsent ? 0 : parseFloat(milkPacketsInput.value) || 0,
             cost: isAbsent ? 0 : parseFloat(deliveryCostInput.value) || 0,
             absent: isAbsent,
         };
@@ -47,6 +57,8 @@ function initializeCustomerPage() {
         saveEntry(entry);
         alert('Entry saved successfully!');
         form.reset();
+        // --- NEW: Reset date to today after submission ---
+        deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
         milkPacketsInput.disabled = false;
         deliveryCostInput.disabled = false;
     });
@@ -98,7 +110,8 @@ function initializeSummaryPage() {
             totalCost += entry.cost;
         }
     });
-
-    document.getElementById('totalPackets').textContent = totalPackets;
+    
+    // --- MODIFIED: Use toFixed(2) for total packets if it's a decimal ---
+    document.getElementById('totalPackets').textContent = totalPackets.toFixed(2);
     document.getElementById('totalCost').textContent = totalCost.toFixed(2);
 }
