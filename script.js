@@ -7,10 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- NEW: State variable to track if we are editing a searched entry ---
+// --- CUSTOMER PAGE LOGIC (Unchanged) ---
 let isEditMode = false;
 
-// Function to handle the customer entry page
 function initializeCustomerPage() {
     const form = document.getElementById('deliveryForm');
     const deliveryDateInput = document.getElementById('deliveryDate');
@@ -20,7 +19,6 @@ function initializeCustomerPage() {
     const searchBtn = document.getElementById('searchBtn');
     const feedbackMessage = document.getElementById('feedbackMessage');
 
-    // Function to set default date to today
     const setDefaultDate = () => {
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -29,13 +27,11 @@ function initializeCustomerPage() {
         deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
     };
 
-    // Function to show feedback messages
     const showFeedback = (message, type) => {
         feedbackMessage.textContent = message;
         feedbackMessage.className = `feedback ${type}`;
     };
 
-    // Function to reset the form state
     const resetFormState = () => {
         form.reset();
         setDefaultDate();
@@ -45,16 +41,13 @@ function initializeCustomerPage() {
         feedbackMessage.style.display = 'none';
     };
     
-    // Set default date on initial load
     setDefaultDate();
 
-    // Reset edit mode if the date is changed manually
     deliveryDateInput.addEventListener('change', () => {
         isEditMode = false;
         feedbackMessage.style.display = 'none';
     });
 
-    // Disable packet and cost fields if "Absent" is checked
     isAbsentCheckbox.addEventListener('change', (e) => {
         if (e.target.checked) {
             milkPacketsInput.value = '';
@@ -67,41 +60,35 @@ function initializeCustomerPage() {
         }
     });
 
-    // --- NEW: Search button functionality ---
     searchBtn.addEventListener('click', () => {
         const searchDate = deliveryDateInput.value;
         if (!searchDate) {
             showFeedback('Please select a date to search.', 'error');
             return;
         }
-
         const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
         const foundEntry = deliveries.find(d => d.date === searchDate);
-
         if (foundEntry) {
             milkPacketsInput.value = foundEntry.packets;
             deliveryCostInput.value = foundEntry.cost;
             isAbsentCheckbox.checked = foundEntry.absent;
-            isAbsentCheckbox.dispatchEvent(new Event('change')); // Trigger change to handle disabled state
+            isAbsentCheckbox.dispatchEvent(new Event('change'));
             isEditMode = true;
             showFeedback('Entry found. You can now edit and save.', 'success');
         } else {
             form.reset();
-            deliveryDateInput.value = searchDate; // Keep the searched date
+            deliveryDateInput.value = searchDate;
             isEditMode = false;
             showFeedback('No entry found for this date. You can create a new one.', 'error');
         }
     });
 
-    // --- MODIFIED: Form submission logic ---
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-
         const entryDate = deliveryDateInput.value;
         const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
         const existingEntry = deliveries.find(d => d.date === entryDate);
 
-        // Prevent creating a new entry if one already exists and we're not in edit mode
         if (existingEntry && !isEditMode) {
             showFeedback('Entry for this date already exists. Please use the Search button to edit.', 'error');
             return;
@@ -113,60 +100,106 @@ function initializeCustomerPage() {
             cost: isAbsentCheckbox.checked ? 0 : parseFloat(deliveryCostInput.value) || 0,
             absent: isAbsentCheckbox.checked,
         };
-
         saveEntry(newEntry);
         alert('Entry saved successfully!');
         resetFormState();
     });
 }
 
-// Unchanged function: saveEntry already supports updating
 function saveEntry(entry) {
     let deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
     const existingEntryIndex = deliveries.findIndex(d => d.date === entry.date);
-    
     if (existingEntryIndex > -1) {
-        // Update existing entry
         deliveries[existingEntryIndex] = entry;
     } else {
-        // Add new entry
         deliveries.push(entry);
     }
-
     deliveries.sort((a, b) => new Date(a.date) - new Date(b.date));
     localStorage.setItem('milkDeliveries', JSON.stringify(deliveries));
 }
 
-// Unchanged function: summary page logic remains the same
-function initializeSummaryPage() {
+
+// --- SUMMARY PAGE LOGIC (MODIFIED) ---
+
+// This function now renders the summary based on a selected month and year
+function renderSummary(selectedMonth, selectedYear) {
     const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
     const tableBody = document.querySelector('#summaryTable tbody');
+    const totalPacketsEl = document.getElementById('totalPackets');
+    const totalCostEl = document.getElementById('totalCost');
+
+    // Clear previous data
+    tableBody.innerHTML = '';
     let totalPackets = 0;
     let totalCost = 0;
 
-    if (deliveries.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td colspan="4" style="text-align:center;">No delivery data found.</td>`;
-        tableBody.appendChild(row);
-        return;
-    }
-    
-    deliveries.forEach(entry => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${entry.date}</td>
-            <td>${entry.absent ? 'N/A' : entry.packets}</td>
-            <td>${entry.absent ? 'N/A' : `₹${entry.cost.toFixed(2)}`}</td>
-            <td>${entry.absent ? 'Absent' : 'Delivered'}</td>
-        `;
-        tableBody.appendChild(row);
-
-        if (!entry.absent) {
-            totalPackets += entry.packets;
-            totalCost += entry.cost;
-        }
+    // Filter deliveries for the selected month and year
+    const filteredDeliveries = deliveries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate.getMonth() == selectedMonth && entryDate.getFullYear() == selectedYear;
     });
-    
-    document.getElementById('totalPackets').textContent = totalPackets.toFixed(2);
-    document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+
+    if (filteredDeliveries.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="4" style="text-align:center;">No delivery data for this month.</td>`;
+        tableBody.appendChild(row);
+    } else {
+        filteredDeliveries.forEach(entry => {
+            const row = document.createElement('tr');
+            
+            // --- MODIFIED: Add 'status-absent' class if absent ---
+            const statusCell = entry.absent 
+                ? '<td class="status-absent">Absent</td>' 
+                : '<td>Delivered</td>';
+
+            row.innerHTML = `
+                <td>${entry.date}</td>
+                <td>${entry.absent ? 'N/A' : entry.packets}</td>
+                <td>${entry.absent ? 'N/A' : `₹${entry.cost.toFixed(2)}`}</td>
+                ${statusCell}
+            `;
+            tableBody.appendChild(row);
+
+            if (!entry.absent) {
+                totalPackets += entry.packets;
+                totalCost += entry.cost;
+            }
+        });
+    }
+
+    // Update totals
+    totalPacketsEl.textContent = totalPackets.toFixed(2);
+    totalCostEl.textContent = totalCost.toFixed(2);
+}
+
+// This is the main function for the summary page
+function initializeSummaryPage() {
+    const monthFilter = document.getElementById('monthFilter');
+    const yearDisplay = document.getElementById('currentYear');
+    const today = new Date();
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    // Populate month dropdown
+    months.forEach((month, index) => {
+        const option = document.createElement('option');
+        option.value = index; // 0-11
+        option.textContent = month;
+        monthFilter.appendChild(option);
+    });
+
+    // Set default values
+    monthFilter.value = currentMonth;
+    yearDisplay.textContent = `Year: ${currentYear}`;
+
+    // Initial render
+    renderSummary(currentMonth, currentYear);
+
+    // Add event listener to re-render on month change
+    monthFilter.addEventListener('change', () => {
+        const selectedMonth = monthFilter.value;
+        renderSummary(selectedMonth, currentYear);
+    });
 }
