@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- NEW: State variable to track if we are editing a searched entry ---
+let isEditMode = false;
+
 // Function to handle the customer entry page
 function initializeCustomerPage() {
     const form = document.getElementById('deliveryForm');
@@ -14,72 +17,127 @@ function initializeCustomerPage() {
     const isAbsentCheckbox = document.getElementById('isAbsent');
     const milkPacketsInput = document.getElementById('milkPackets');
     const deliveryCostInput = document.getElementById('deliveryCost');
+    const searchBtn = document.getElementById('searchBtn');
+    const feedbackMessage = document.getElementById('feedbackMessage');
 
-    // --- NEW: Set default date to today ---
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const dd = String(today.getDate()).padStart(2, '0');
-    deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
-    // --- End of new code ---
+    // Function to set default date to today
+    const setDefaultDate = () => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
+    };
+
+    // Function to show feedback messages
+    const showFeedback = (message, type) => {
+        feedbackMessage.textContent = message;
+        feedbackMessage.className = `feedback ${type}`;
+    };
+
+    // Function to reset the form state
+    const resetFormState = () => {
+        form.reset();
+        setDefaultDate();
+        isEditMode = false;
+        milkPacketsInput.disabled = false;
+        deliveryCostInput.disabled = false;
+        feedbackMessage.style.display = 'none';
+    };
+    
+    // Set default date on initial load
+    setDefaultDate();
+
+    // Reset edit mode if the date is changed manually
+    deliveryDateInput.addEventListener('change', () => {
+        isEditMode = false;
+        feedbackMessage.style.display = 'none';
+    });
 
     // Disable packet and cost fields if "Absent" is checked
     isAbsentCheckbox.addEventListener('change', (e) => {
-        const checked = e.target.checked;
-        milkPacketsInput.disabled = checked;
-        deliveryCostInput.disabled = checked;
-        if (checked) {
+        if (e.target.checked) {
             milkPacketsInput.value = '';
             deliveryCostInput.value = '';
+            milkPacketsInput.disabled = true;
+            deliveryCostInput.disabled = true;
+        } else {
+            milkPacketsInput.disabled = false;
+            deliveryCostInput.disabled = false;
         }
     });
 
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const deliveryDate = deliveryDateInput.value;
-        const isAbsent = isAbsentCheckbox.checked;
-
-        const entry = {
-            date: deliveryDate,
-            // --- MODIFIED: Use parseFloat for packets to allow decimals ---
-            packets: isAbsent ? 0 : parseFloat(milkPacketsInput.value) || 0,
-            cost: isAbsent ? 0 : parseFloat(deliveryCostInput.value) || 0,
-            absent: isAbsent,
-        };
-
-        // Validate that date is selected
-        if (!entry.date) {
-            alert('Please select a date.');
+    // --- NEW: Search button functionality ---
+    searchBtn.addEventListener('click', () => {
+        const searchDate = deliveryDateInput.value;
+        if (!searchDate) {
+            showFeedback('Please select a date to search.', 'error');
             return;
         }
 
-        saveEntry(entry);
+        const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
+        const foundEntry = deliveries.find(d => d.date === searchDate);
+
+        if (foundEntry) {
+            milkPacketsInput.value = foundEntry.packets;
+            deliveryCostInput.value = foundEntry.cost;
+            isAbsentCheckbox.checked = foundEntry.absent;
+            isAbsentCheckbox.dispatchEvent(new Event('change')); // Trigger change to handle disabled state
+            isEditMode = true;
+            showFeedback('Entry found. You can now edit and save.', 'success');
+        } else {
+            form.reset();
+            deliveryDateInput.value = searchDate; // Keep the searched date
+            isEditMode = false;
+            showFeedback('No entry found for this date. You can create a new one.', 'error');
+        }
+    });
+
+    // --- MODIFIED: Form submission logic ---
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const entryDate = deliveryDateInput.value;
+        const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
+        const existingEntry = deliveries.find(d => d.date === entryDate);
+
+        // Prevent creating a new entry if one already exists and we're not in edit mode
+        if (existingEntry && !isEditMode) {
+            showFeedback('Entry for this date already exists. Please use the Search button to edit.', 'error');
+            return;
+        }
+        
+        const newEntry = {
+            date: entryDate,
+            packets: isAbsentCheckbox.checked ? 0 : parseFloat(milkPacketsInput.value) || 0,
+            cost: isAbsentCheckbox.checked ? 0 : parseFloat(deliveryCostInput.value) || 0,
+            absent: isAbsentCheckbox.checked,
+        };
+
+        saveEntry(newEntry);
         alert('Entry saved successfully!');
-        form.reset();
-        // --- NEW: Reset date to today after submission ---
-        deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
-        milkPacketsInput.disabled = false;
-        deliveryCostInput.disabled = false;
+        resetFormState();
     });
 }
 
-// Function to save an entry to localStorage
+// Unchanged function: saveEntry already supports updating
 function saveEntry(entry) {
     let deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
-    // Check if an entry for this date already exists and update it
     const existingEntryIndex = deliveries.findIndex(d => d.date === entry.date);
+    
     if (existingEntryIndex > -1) {
+        // Update existing entry
         deliveries[existingEntryIndex] = entry;
     } else {
+        // Add new entry
         deliveries.push(entry);
     }
-    // Sort entries by date
+
     deliveries.sort((a, b) => new Date(a.date) - new Date(b.date));
     localStorage.setItem('milkDeliveries', JSON.stringify(deliveries));
 }
 
-// Function to handle the milkman summary page
+// Unchanged function: summary page logic remains the same
 function initializeSummaryPage() {
     const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
     const tableBody = document.querySelector('#summaryTable tbody');
@@ -95,14 +153,12 @@ function initializeSummaryPage() {
     
     deliveries.forEach(entry => {
         const row = document.createElement('tr');
-        
         row.innerHTML = `
             <td>${entry.date}</td>
             <td>${entry.absent ? 'N/A' : entry.packets}</td>
             <td>${entry.absent ? 'N/A' : `₹${entry.cost.toFixed(2)}`}</td>
             <td>${entry.absent ? 'Absent' : 'Delivered'}</td>
         `;
-
         tableBody.appendChild(row);
 
         if (!entry.absent) {
@@ -111,7 +167,6 @@ function initializeSummaryPage() {
         }
     });
     
-    // --- MODIFIED: Use toFixed(2) for total packets if it's a decimal ---
     document.getElementById('totalPackets').textContent = totalPackets.toFixed(2);
     document.getElementById('totalCost').textContent = totalCost.toFixed(2);
 }
