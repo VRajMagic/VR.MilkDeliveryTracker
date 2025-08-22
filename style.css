@@ -43,7 +43,6 @@ h1, h2, h3 {
     box-sizing: border-box;
 }
 
-/* --- NEW: Styles for the date and search button group --- */
 .date-search-group {
     display: flex;
     align-items: flex-end;
@@ -53,7 +52,6 @@ h1, h2, h3 {
 .date-input {
     flex-grow: 1;
 }
-/* --- End of new code --- */
 
 .checkbox-group {
     display: flex;
@@ -80,7 +78,6 @@ button:hover {
     background-color: #0056b3;
 }
 
-/* --- NEW: Style for the secondary search button --- */
 .secondary-button {
     background-color: #6c757d;
     padding: 10px 15px;
@@ -90,9 +87,7 @@ button:hover {
 .secondary-button:hover {
     background-color: #5a6268;
 }
-/* --- End of new code --- */
 
-/* --- NEW: Style for feedback messages --- */
 .feedback {
     padding: 10px;
     margin-bottom: 20px;
@@ -112,8 +107,30 @@ button:hover {
     color: #721c24;
     display: block;
 }
-/* --- End of new code --- */
 
+/* --- NEW: Filter container styles --- */
+.filter-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.filter-container label {
+    font-weight: bold;
+}
+
+.filter-container select, .filter-container span {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+/* --- End of new code --- */
 
 #summaryTable {
     width: 100%;
@@ -149,3 +166,11 @@ button:hover {
     font-size: 1.1em;
     font-weight: bold;
 }
+
+/* --- NEW: Style for 'Absent' status --- */
+.status-absent {
+    color: red;
+    font-weight: bold;
+}
+/* --- End of new code --- */
+
