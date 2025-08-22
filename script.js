@@ -121,19 +121,16 @@ function saveEntry(entry) {
 
 // --- SUMMARY PAGE LOGIC (MODIFIED) ---
 
-// This function now renders the summary based on a selected month and year
 function renderSummary(selectedMonth, selectedYear) {
     const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
     const tableBody = document.querySelector('#summaryTable tbody');
     const totalPacketsEl = document.getElementById('totalPackets');
     const totalCostEl = document.getElementById('totalCost');
 
-    // Clear previous data
     tableBody.innerHTML = '';
     let totalPackets = 0;
     let totalCost = 0;
 
-    // Filter deliveries for the selected month and year
     const filteredDeliveries = deliveries.filter(entry => {
         const entryDate = new Date(entry.date);
         return entryDate.getMonth() == selectedMonth && entryDate.getFullYear() == selectedYear;
@@ -147,13 +144,17 @@ function renderSummary(selectedMonth, selectedYear) {
         filteredDeliveries.forEach(entry => {
             const row = document.createElement('tr');
             
-            // --- MODIFIED: Add 'status-absent' class if absent ---
+            // --- NEW: Format the date from YYYY-MM-DD to DD-MM-YYYY ---
+            const dateParts = entry.date.split('-'); // e.g., ["2025", "08", "23"]
+            const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`; // "23-08-2025"
+            // --- End of new code ---
+
             const statusCell = entry.absent 
                 ? '<td class="status-absent">Absent</td>' 
                 : '<td>Delivered</td>';
 
             row.innerHTML = `
-                <td>${entry.date}</td>
+                <td>${formattedDate}</td>
                 <td>${entry.absent ? 'N/A' : entry.packets}</td>
                 <td>${entry.absent ? 'N/A' : `₹${entry.cost.toFixed(2)}`}</td>
                 ${statusCell}
@@ -167,37 +168,31 @@ function renderSummary(selectedMonth, selectedYear) {
         });
     }
 
-    // Update totals
     totalPacketsEl.textContent = totalPackets.toFixed(2);
     totalCostEl.textContent = totalCost.toFixed(2);
 }
 
-// This is the main function for the summary page
 function initializeSummaryPage() {
     const monthFilter = document.getElementById('monthFilter');
     const yearDisplay = document.getElementById('currentYear');
     const today = new Date();
-    const currentMonth = today.getMonth(); // 0-11
+    const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-    // Populate month dropdown
     months.forEach((month, index) => {
         const option = document.createElement('option');
-        option.value = index; // 0-11
+        option.value = index;
         option.textContent = month;
         monthFilter.appendChild(option);
     });
 
-    // Set default values
     monthFilter.value = currentMonth;
     yearDisplay.textContent = `Year: ${currentYear}`;
 
-    // Initial render
     renderSummary(currentMonth, currentYear);
 
-    // Add event listener to re-render on month change
     monthFilter.addEventListener('change', () => {
         const selectedMonth = monthFilter.value;
         renderSummary(selectedMonth, currentYear);
