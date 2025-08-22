@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Milk Delivery Entry</title>
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
+</head><body>
     <div class="container">
         <h1>Milk Delivery Tracker</h1>
         <form id="deliveryForm">
             <h2>Add or Edit Delivery</h2>
-            <div class="form-group">
-                <label for="deliveryDate">Date of Delivery</label>
-                <input type="date" id="deliveryDate" required>
+
+            <div class="form-group date-search-group">
+                <div class="date-input">
+                    <label for="deliveryDate">Date of Delivery</label>
+                    <input type="date" id="deliveryDate" required>
+                </div>
+                <button type="button" id="searchBtn" class="secondary-button">Search</button>
             </div>
+            
+            <div id="feedbackMessage" class="feedback"></div>
+
             <div class="form-group">
                 <label for="milkPackets">Number of Packets</label>
                 <input type="number" id="milkPackets" min="0" step="any" placeholder="e.g., 1.5">
