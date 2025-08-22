@@ -9,6 +9,15 @@
 <body>
     <div class="container">
         <h1>Daily Delivery Summary</h1>
+
+        <!-- NEW: Month Filter Section -->
+        <div class="filter-container">
+            <label for="monthFilter">Select Month:</label>
+            <select id="monthFilter"></select>
+            <span id="currentYear"></span>
+        </div>
+        <!-- End of new code -->
+
         <div id="summaryContent">
             <table id="summaryTable">
                 <thead>
@@ -24,7 +33,7 @@
                 </tbody>
             </table>
             <div id="summaryTotals">
-                <h3>Total Summary</h3>
+                <h3>Monthly Total Summary</h3>
                 <p>Total Packets Delivered: <span id="totalPackets">0</span></p>
                 <p>Total Cost: ₹<span id="totalCost">0</span></p>
             </div>
