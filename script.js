@@ -154,3 +154,4 @@ function initializeSummaryPage() {
         renderSummary(monthFilter.value, currentYear);
     });
 }
+
