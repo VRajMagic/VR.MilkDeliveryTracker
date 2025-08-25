@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Check which page is currently loaded and run the corresponding script
     if (document.getElementById('deliveryForm')) {
         initializeCustomerPage();
     } else if (document.getElementById('summaryContent')) {
@@ -7,17 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- CUSTOMER PAGE LOGIC (Unchanged) ---
-let isEditMode = false;
+// --- PASTE YOUR GOOGLE APPS SCRIPT URL HERE ---
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzzR7qJgyt1ZNiB7wLaaC1OW5uKz6d6Wfh3ef6R-oSNx9Or7Cr5FeoGVqYLRhyTDfoiiQ/exec"; 
 
+// --- CUSTOMER PAGE LOGIC (MODIFIED) ---
 function initializeCustomerPage() {
     const form = document.getElementById('deliveryForm');
     const deliveryDateInput = document.getElementById('deliveryDate');
-    const isAbsentCheckbox = document.getElementById('isAbsent');
-    const milkPacketsInput = document.getElementById('milkPackets');
-    const deliveryCostInput = document.getElementById('deliveryCost');
     const searchBtn = document.getElementById('searchBtn');
     const feedbackMessage = document.getElementById('feedbackMessage');
+    const submitButton = form.querySelector('button[type="submit"]');
 
     const setDefaultDate = () => {
         const today = new Date();
@@ -27,149 +25,112 @@ function initializeCustomerPage() {
         deliveryDateInput.value = `${yyyy}-${mm}-${dd}`;
     };
 
-    const showFeedback = (message, type) => {
+    const showFeedback = (message, type, duration = 3000) => {
         feedbackMessage.textContent = message;
         feedbackMessage.className = `feedback ${type}`;
-    };
-
-    const resetFormState = () => {
-        form.reset();
-        setDefaultDate();
-        isEditMode = false;
-        milkPacketsInput.disabled = false;
-        deliveryCostInput.disabled = false;
-        feedbackMessage.style.display = 'none';
+        setTimeout(() => { feedbackMessage.style.display = 'none'; }, duration);
     };
     
     setDefaultDate();
 
-    deliveryDateInput.addEventListener('change', () => {
-        isEditMode = false;
-        feedbackMessage.style.display = 'none';
-    });
-
-    isAbsentCheckbox.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            milkPacketsInput.value = '';
-            deliveryCostInput.value = '';
-            milkPacketsInput.disabled = true;
-            deliveryCostInput.disabled = true;
-        } else {
-            milkPacketsInput.disabled = false;
-            deliveryCostInput.disabled = false;
-        }
-    });
-
-    searchBtn.addEventListener('click', () => {
+    // Search functionality now fetches from Google Sheets
+    searchBtn.addEventListener('click', async () => {
         const searchDate = deliveryDateInput.value;
-        if (!searchDate) {
-            showFeedback('Please select a date to search.', 'error');
-            return;
-        }
-        const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
-        const foundEntry = deliveries.find(d => d.date === searchDate);
+        showFeedback('Searching...', 'success');
+        const response = await fetch(SCRIPT_URL);
+        const data = await response.json();
+        const foundEntry = data.find(d => d.date.startsWith(searchDate));
+        
         if (foundEntry) {
-            milkPacketsInput.value = foundEntry.packets;
-            deliveryCostInput.value = foundEntry.cost;
-            isAbsentCheckbox.checked = foundEntry.absent;
-            isAbsentCheckbox.dispatchEvent(new Event('change'));
-            isEditMode = true;
+            document.getElementById('milkPackets').value = foundEntry.packets;
+            document.getElementById('deliveryCost').value = foundEntry.cost;
+            document.getElementById('isAbsent').checked = foundEntry.absent;
+            document.getElementById('isAbsent').dispatchEvent(new Event('change'));
             showFeedback('Entry found. You can now edit and save.', 'success');
         } else {
-            form.reset();
-            deliveryDateInput.value = searchDate;
-            isEditMode = false;
-            showFeedback('No entry found for this date. You can create a new one.', 'error');
+            showFeedback('No entry found. You can create a new one.', 'error');
         }
     });
 
-    form.addEventListener('submit', (e) => {
+    // Form submission now sends data to Google Sheets
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const entryDate = deliveryDateInput.value;
-        const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
-        const existingEntry = deliveries.find(d => d.date === entryDate);
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
 
-        if (existingEntry && !isEditMode) {
-            showFeedback('Entry for this date already exists. Please use the Search button to edit.', 'error');
-            return;
-        }
-        
-        const newEntry = {
-            date: entryDate,
-            packets: isAbsentCheckbox.checked ? 0 : parseFloat(milkPacketsInput.value) || 0,
-            cost: isAbsentCheckbox.checked ? 0 : parseFloat(deliveryCostInput.value) || 0,
-            absent: isAbsentCheckbox.checked,
+        const entry = {
+            date: deliveryDateInput.value,
+            packets: parseFloat(document.getElementById('milkPackets').value) || 0,
+            cost: parseFloat(document.getElementById('deliveryCost').value) || 0,
+            absent: document.getElementById('isAbsent').checked,
         };
-        saveEntry(newEntry);
-        alert('Entry saved successfully!');
-        resetFormState();
+
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(entry),
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert('Entry saved successfully!');
+                form.reset();
+                setDefaultDate();
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            alert('An error occurred: ' + error.message);
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Save Entry';
+        }
     });
 }
-
-function saveEntry(entry) {
-    let deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
-    const existingEntryIndex = deliveries.findIndex(d => d.date === entry.date);
-    if (existingEntryIndex > -1) {
-        deliveries[existingEntryIndex] = entry;
-    } else {
-        deliveries.push(entry);
-    }
-    deliveries.sort((a, b) => new Date(a.date) - new Date(b.date));
-    localStorage.setItem('milkDeliveries', JSON.stringify(deliveries));
-}
-
 
 // --- SUMMARY PAGE LOGIC (MODIFIED) ---
-
-function renderSummary(selectedMonth, selectedYear) {
-    const deliveries = JSON.parse(localStorage.getItem('milkDeliveries')) || [];
+async function renderSummary(selectedMonth, selectedYear) {
     const tableBody = document.querySelector('#summaryTable tbody');
-    const totalPacketsEl = document.getElementById('totalPackets');
-    const totalCostEl = document.getElementById('totalCost');
+    tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading data...</td></tr>`;
 
-    tableBody.innerHTML = '';
-    let totalPackets = 0;
-    let totalCost = 0;
+    try {
+        const response = await fetch(SCRIPT_URL);
+        const deliveries = await response.json();
+        
+        tableBody.innerHTML = '';
+        let totalPackets = 0;
+        let totalCost = 0;
 
-    const filteredDeliveries = deliveries.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() == selectedMonth && entryDate.getFullYear() == selectedYear;
-    });
+        const filteredDeliveries = deliveries.filter(entry => {
+            const entryDate = new Date(entry.date);
+            return entryDate.getMonth() == selectedMonth && entryDate.getFullYear() == selectedYear;
+        }).sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    if (filteredDeliveries.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td colspan="4" style="text-align:center;">No delivery data for this month.</td>`;
-        tableBody.appendChild(row);
-    } else {
-        filteredDeliveries.forEach(entry => {
-            const row = document.createElement('tr');
-            
-            // --- NEW: Format the date from YYYY-MM-DD to DD-MM-YYYY ---
-            const dateParts = entry.date.split('-'); // e.g., ["2025", "08", "23"]
-            const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`; // "23-08-2025"
-            // --- End of new code ---
 
-            const statusCell = entry.absent 
-                ? '<td class="status-absent">Absent</td>' 
-                : '<td>Delivered</td>';
+        if (filteredDeliveries.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No delivery data for this month.</td></tr>`;
+        } else {
+            filteredDeliveries.forEach(entry => {
+                const row = document.createElement('tr');
+                const dateParts = entry.date.split('T')[0].split('-');
+                const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts}`;
+                
+                const statusCell = entry.absent ? '<td class="status-absent">Absent</td>' : '<td>Delivered</td>';
+                row.innerHTML = `<td>${formattedDate}</td><td>${entry.absent ? 'N/A' : entry.packets}</td><td>${entry.absent ? 'N/A' : `₹${parseFloat(entry.cost).toFixed(2)}`}</td>${statusCell}`;
+                tableBody.appendChild(row);
 
-            row.innerHTML = `
-                <td>${formattedDate}</td>
-                <td>${entry.absent ? 'N/A' : entry.packets}</td>
-                <td>${entry.absent ? 'N/A' : `₹${entry.cost.toFixed(2)}`}</td>
-                ${statusCell}
-            `;
-            tableBody.appendChild(row);
-
-            if (!entry.absent) {
-                totalPackets += entry.packets;
-                totalCost += entry.cost;
-            }
-        });
+                if (!entry.absent) {
+                    totalPackets += parseFloat(entry.packets);
+                    totalCost += parseFloat(entry.cost);
+                }
+            });
+        }
+        document.getElementById('totalPackets').textContent = totalPackets.toFixed(2);
+        document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+    } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Error loading data.</td></tr>`;
     }
-
-    totalPacketsEl.textContent = totalPackets.toFixed(2);
-    totalCostEl.textContent = totalCost.toFixed(2);
 }
 
 function initializeSummaryPage() {
@@ -178,23 +139,18 @@ function initializeSummaryPage() {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
+    
     months.forEach((month, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        option.textContent = month;
-        monthFilter.appendChild(option);
+        const option = new Option(month, index);
+        monthFilter.add(option);
     });
-
+    
     monthFilter.value = currentMonth;
     yearDisplay.textContent = `Year: ${currentYear}`;
-
     renderSummary(currentMonth, currentYear);
 
     monthFilter.addEventListener('change', () => {
-        const selectedMonth = monthFilter.value;
-        renderSummary(selectedMonth, currentYear);
+        renderSummary(monthFilter.value, currentYear);
     });
 }
