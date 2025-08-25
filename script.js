@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- PASTE YOUR GOOGLE APPS SCRIPT URL HERE ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7tZtODHgYf6KA4-KNPla0vxfXb53odXCUBn67LjFEraeM-cHDwVqIDroFnIggqWXH/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/xxxxxxxxxx---AKfycbx7tZtODHgYf6KA4-KNPla0vxfXb53odXCUBn67LjFEraeM-cHDwV/exec"; 
 
 // --- CUSTOMER PAGE LOGIC (MODIFIED) ---
 function initializeCustomerPage() {
@@ -154,4 +154,5 @@ function initializeSummaryPage() {
         renderSummary(monthFilter.value, currentYear);
     });
 }
+
 
