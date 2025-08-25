@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- PASTE YOUR GOOGLE APPS SCRIPT URL HERE ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzzR7qJgyt1ZNiB7wLaaC1OW5uKz6d6Wfh3ef6R-oSNx9Or7Cr5FeoGVqYLRhyTDfoiiQ/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7tZtODHgYf6KA4-KNPla0vxfXb53odXCUBn67LjFEraeM-cHDwVqIDroFnIggqWXH/exec"; 
 
 // --- CUSTOMER PAGE LOGIC (MODIFIED) ---
 function initializeCustomerPage() {
